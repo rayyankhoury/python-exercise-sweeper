@@ -5,9 +5,23 @@ import urllib.request
 import requests
 import re
 from bs4 import BeautifulSoup
-from requests_html import HTMLSession
+#from requests_html import HTMLSession
 import subprocess
 
+#helper JSON function
+def JSONify (name,value):
+    return '"' + name + '"' + ': ' + '"' + value + '"' + ',\n'
+
+#JSON definitions
+NAME = "name"
+UTILITY = "utility"
+MECHANICS = "mechanics"
+FORCE = "force"
+PREPARATION = "preparation"
+EXECUTION = "execution"
+COMMENTS = "comments"
+
+# exercise defintions
 exerciseWebsiteName = "ContraLateralSuperman"
 exerciseFullName = ""
 
@@ -22,11 +36,10 @@ except urllib.error.URLError as e:
 soup = BeautifulSoup(page, "lxml")
 
 # Finds the name of the exercise
-content = soup.find(
-    'div', {"class": "fruitful-page-title fruitfull-title-padding"})
-article = 'Exercise: '
-for i in content.findAll('h1'):
-    article = article + i.text
+nameDIV = soup.find('div', {"class": "fruitful-page-title fruitfull-title-padding"})
+fileExerciseName = ""
+for i in nameDIV.findAll('h1'):
+    fileExerciseName = JSONify (NAME,i.text)
     exerciseFullName = i.text
 
 # File
@@ -34,10 +47,10 @@ subdirectory = exerciseFullName
 if not os.path.exists(exerciseFullName):
     os.makedirs(exerciseFullName)
 file = open(os.path.join(subdirectory, 'details.json'), 'w')
-file.write(article + '\n')
+file.write(fileExerciseName)
 
 ##############################
-subprocess.run(["youtube-dl", "-v", "https://player.vimeo.com/video/156692562","--referer", url, "-o", '/'+exerciseFullName+"/video.%(ext)s"])
+subprocess.run(["youtube-dl", "-v", "https://player.vimeo.com/video/156692562","--referer", url, "-o", os.path.join(subdirectory, 'video.%(ext)s')])
 # session = HTMLSession()
 # r = session.get(url)
 # r.html.render()
@@ -82,24 +95,22 @@ leftDiv = soup.findAll('div', {"class": "col-sm-6"})[0]
 rightDiv = soup.findAll('div', {"class": "col-sm-6"})[1]
 
 # Finds the classification of the exercise
-classification = ['Utility: ', 'Mechanics: ', 'Force: ']
+classification = [UTILITY, MECHANICS, FORCE]
 table = leftDiv.find('table')
 links = (table.findAll('tr'))
 for index, link in enumerate(links):
-    classification[index] += (link.findAll('td')[1].text)
-    file.write(classification[index] + '\n')
+    writeToFile = JSONify(classification[index], link.findAll('td')[1].text)
+    file.write(writeToFile)
 
 # Finds the preparation and execution of the exercise
-preparation = 'Preparation: '
-execution = 'Execution: '
 paragraphs = (leftDiv.findAll('p'))
 if (len(paragraphs) < 4):
     file.write("PARSE ERROR FOR EXERCISE PREPARATION" + '\n')
 else:
-    preparation += paragraphs[1].text
-    execution += paragraphs[3].text
-    file.write(preparation + '\n')
-    file.write(execution + '\n')
+    writeToFile1 = JSONify(PREPARATION, paragraphs[1].text)
+    writeToFile2 = JSONify(EXECUTION, paragraphs[3].text)
+    file.write(writeToFile1)
+    file.write(writeToFile2)
 
 # Finds the comments
 headers = leftDiv.findAll('h2')
@@ -122,32 +133,40 @@ if (rightDiv.findChildren()[0].name == "p"):
 
 # Case 1: finished on left side
 if (leftSideStart and leftSideFinished):
-    comments = 'Comments: ' + paragraphs[len(paragraphs)-1].text
-    file.write(comments + '\n')
+    writeToFile = JSONify(COMMENTS , paragraphs[len(paragraphs)-1].text)
+    file.write(writeToFile)
 
 # Case 2: finished on right side
 if (leftSideStart and not leftSideFinished):
-    comments = 'Comments: ' + paragraphs[len(paragraphs)-1].text + ' '
-    rightComments = rightDiv.find('p').text
-    comments += rightComments
-    file.write(comments + '\n')
+    tempString = paragraphs[len(paragraphs)-1].text + ' ' + rightDiv.find('p').text
+    writeToFile = JSONify(COMMENTS , tempString)
+    file.write(writeToFile)
 
 # Case 3: comments right side
 if (rightSideStart):
-    rightComments = rightDiv.find('p').text
-    comments = 'Comments: ' + rightComments
-    file.write(comments + '\n')
+    writeToFile = JSONify(COMMENTS , rightDiv.find('p').text)
+    file.write(writeToFile)
 
-# Finds the muscles
+# Efficient Parser
 muscleGroupNames = rightDiv.findAll('p')
 muscleNames = rightDiv.findAll('ul')
-for i in range(1, len(muscleGroupNames)):
-    file.write(muscleGroupNames[i].text.rstrip('\n') + ': ')
+writeToFile = ""
+first = True
+for i in range(len(muscleGroupNames)-1, 0, -1):
+    muscleGroupName = muscleGroupNames[i].text.rstrip('\n').lower()
     currentMuscles = muscleNames[i-1].findAll('li')
     muscles = ""
     for muscle in currentMuscles:
         muscles += muscle.text + ", "
     muscles = muscles[:-2]
-    file.write(muscles + '\n')
-    # Close file
+    if first:
+        first = False
+        writeToFile = JSONify(muscleGroupName, muscles)[:-2]
+    else:
+        writeToFile = JSONify(muscleGroupName, muscles) + writeToFile
+
+# Writes the string to the file and closes the file
+file.write(writeToFile)
 file.close()
+
+
