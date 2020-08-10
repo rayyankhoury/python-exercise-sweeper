@@ -8,8 +8,14 @@ from requests_html import HTMLSession
 # URL Setup
 URL = 'https://exrx.net/WeightExercises/ErectorSpinae/CBStraightLegDeadlift'
 session = HTMLSession()
-r = session.get(URL, headers={'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:79.0) Gecko/20100101 Firefox/79.0"})
+r = session.get(URL, headers={
+                'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:79.0) Gecko/20100101 Firefox/79.0"})
 r.html.render()
 print(r.headers)
 print(r.content)
-	/video/157017805
+
+
+
+https://player.vimeo.com/video/
+
+?muted=1
