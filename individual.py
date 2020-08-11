@@ -5,186 +5,223 @@ import urllib.request
 import requests
 import re
 from bs4 import BeautifulSoup
+from bs4.element import ResultSet
 # from requests_html import HTMLSession
 import subprocess
+from collections import OrderedDict
 
 
 # helper JSON function
 
 
-def JSONify(name, value):
+def jsonify(name, value):
     return '"' + name.rstrip('\n') + '"' + ': ' + '"' + value.rstrip('\n') + '"' + ',\n'
 
 
 # JSON definitions
-NAME = "name"
-UTILITY = "utility"
-MECHANICS = "mechanics"
-FORCE = "force"
-PREPARATION = "preparation"
-EXECUTION = "execution"
-COMMENTS = "comments"
+_NAME = "name"
+_UTILITY = "utility"
+_MECHANICS = "mechanics"
+_FORCE = "force"
+_CLASSIFICATION = [_UTILITY, _MECHANICS, _FORCE]
+_PREPARATION = "preparation"
+_EXECUTION = "execution"
+_COMMENTS = "comments"
+_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:86.0) Gecko/20100101 Firefox/86.0"
+_URL = "https://exrx.net/"
+# exercise defintions
+_exercise_full_name = ""
+_url = ""
 
 
-def ParseWebpage(exerciseType, muscleClass, exerciseWebsiteName, overallMuscleGroup):
-
-    # exercise defintions
-    exerciseFullName = ""
-
+def get_soup(exercise_type, muscle_class, exercise_website_name):
     # URL Setup
-    url = "https://exrx.net/"+exerciseType+"/"+muscleClass+"/" + exerciseWebsiteName
-    req = urllib.request.Request(url, headers={
-        'User-Agent': "Mozilla/5.0 (X11; Linux x86_64; rv:86.0) Gecko/20100101 Firefox/86.0"})
+    _url = _URL + exercise_type + "/" + muscle_class + "/" + exercise_website_name
+    req = urllib.request.Request(_url, headers={'User-Agent': _USER_AGENT})
     try:
         page = urllib.request.urlopen(req)
     except urllib.error.URLError as e:
         print(e.reason)
-    soup = BeautifulSoup(page, "lxml")
+
+    return BeautifulSoup(page, "lxml")
+
+
+def open_file(soup):
 
     # Finds the name of the exercise
-    nameDIV = soup.find(
-        'div', {"class": "fruitful-page-title fruitfull-title-padding"})
-    fileExerciseName = ""
-    for i in nameDIV.findAll('h1'):
-        fileExerciseName = JSONify(NAME, i.text)
-        exerciseFullName = i.text
+    name_div_class = "fruitful-page-title fruitfull-title-padding"
+    name_div = soup.find('div', {"class": name_div_class})
+    file_exercise_name = ""
+    for i in name_div.findAll('h1'):
+        file_exercise_name = jsonify(_NAME, i.text)
+        exercise_full_name = i.text
 
     # File
-    # subdirectory = exerciseFullName
-    # if not os.path.exists(exerciseFullName):
-    #     os.makedirs(exerciseFullName)
     file = open('details.json', 'a')
     file.write('{')
+    file.write(file_exercise_name)
+    return file
 
+
+def save_image(picture):
+    # yes
+    print(picture)
+
+
+def save_media(soup):
     # Finding video in soup
-    file.write(fileExerciseName)
-    result = re.search(
-        'https://player.vimeo.com/video/(.*)?muted=1&autoplay=1', soup.decode('utf-8'))
-    videoID = ''.join([n for n in result.group(1) if n.isdigit()])
-
-    ##############################
-    subprocess.run(["youtube-dl", "-v", "https://player.vimeo.com/video/" + videoID,
-                    "--referer", url, "-o", exerciseFullName.replace(" ", "") + '.%(ext)s'])
-
-    # subprocess.run(["youtube-dl", "-v", "https://player.vimeo.com/video/" + videoID,
-    #                "--referer", url, "-o", os.path.join(subdirectory, 'video.%(ext)s')])
-
-# youtube-dl -v "https://player.vimeo.com/video/157005421" --referer "https://www.exrx.net/WeightExercises/BackGeneral/BWSupineRow" -o "video.mp4"
-# session = HTMLSession()
-# r = session.get(url)
-# r.html.render()
-
-# headers = {
-# 'Host': 'player.vimeo.com',
-# 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:79.0) Gecko/20100101 Firefox/79.0',
-# 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-# 'Accept-Language': 'en-US,en;q=0.5',
-# 'Accept-Encoding': 'gzip, deflate, br',
-# 'DNT': '1',
-# 'Connection': 'keep-alive',
-# 'Referer': 'https://exrx.net/',
-# 'Upgrade-Insecure-Requests': '1',
-# 'Pragma': 'no-cache',
-# 'Cache-Control': 'no-cache'}
-
-# videoURL = 'https://player.vimeo.com/video/157104877?muted=1&autoplay=1&loop=1&title=0&byline=0&portrait=0'
-# r = requests.get(videoURL, headers)
-# print(r.status_code)
-# open("video.mp4", 'wb').write(r.content)
-
-# videoreq = urllib.request.Request(videoURL, headers)
-# open("video.mp4", 'wb').write(videoreq..data)
-
-# trying to get the mp4
-# x = urllib.request.Request('GET /api/video/b10412543b7667a107e178795cd5bc0c/10226 HTTP/1.1', headers={
-#    'Host': "exrx.glorb.com",
-#    'User-Agent': "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:79.0) Gecko/20100101 Firefox/79.0",
-#    'Accept': "video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5",
-#    'Accept-Language': "en-US,en;q=0.5",
-#    'Range': "bytes=0-",
-#    'DNT': "1",
-#    'Connection': "keep-alive",
-#    'Referer': "https://exrx.net/WeightExercises/ErectorSpinae/LVStraightLegDeadlift"})
-
-################################
-
-    leftDiv = soup.findAll('div', {"class": "col-sm-6"})[0]
-    rightDiv = soup.findAll('div', {"class": "col-sm-6"})[1]
-
-    # Finds the classification of the exercise
-    classification = [UTILITY, MECHANICS, FORCE]
-    table = leftDiv.find('table')
-    links = (table.findAll('tr'))
-    for index, link in enumerate(links):
-        writeToFile = JSONify(
-            classification[index], link.findAll('td')[1].text)
-        file.write(writeToFile)
-
-    # Finds the preparation and execution of the exercise
-    paragraphs = (leftDiv.findAll('p'))
-    if (len(paragraphs) < 4):
-        file.write("PARSE ERROR FOR EXERCISE PREPARATION" + '\n')
+    search_string = "https://player.vimeo.com/video/(.*)?muted=1&autoplay=1"
+    result = re.search(search_string, soup.decode('utf-8'))
+    # is not a video, saves an image instead
+    if result is None:
+        save_image(soup.find('picture'))
+    # otherwise runs and saves an image
     else:
-        writeToFile1 = JSONify(PREPARATION, paragraphs[1].text)
-        writeToFile2 = JSONify(EXECUTION, paragraphs[3].text)
-        file.write(writeToFile1)
-        file.write(writeToFile2)
+        video_id = ''.join([n for n in result.group(1) if n.isdigit()])
+        subprocess.run(["youtube-dl", "-v", "https://player.vimeo.com/video/" + video_id,
+                        "--referer", _url, "-o", _exercise_full_name.replace(" ", "") + '.%(ext)s'])
 
+
+def write_classification(file, classification_table):
+    # Finds the classification of the exercise
+    links = (classification_table.findAll('tr'))
+    for index, link in enumerate(links):
+        write_to_file = jsonify(
+            _CLASSIFICATION[index], link.findAll('td')[1].text)
+        file.write(write_to_file)
+
+
+def write_preparation_execution(file, paragraphs):
+    # Finds the preparation and execution of the exercise
+    for i, paragraph in enumerate(paragraphs):
+        text = paragraph.text.lower().strip()
+        if text == _PREPARATION:
+            if (paragraphs[i + 1].text.lower().strip() != _EXECUTION):
+                file.write(jsonify(_PREPARATION, paragraphs[i + 1].text))
+        if text == _EXECUTION:
+            if (paragraphs[i + 1].text.lower().strip() != None) and (text != _COMMENTS):
+                file.write(jsonify(_EXECUTION, paragraphs[i + 1].text))
+
+
+def write_comments(file, headers, right_div, left_div, paragraphs):
     # Finds the comments
-    headers = leftDiv.findAll('h2')
-    leftSideStart = False
-    rightSideStart = False
+    left_side_start = False
+    right_side_start = False
     for header in headers:
         # Case 1 + 2, comments started on left side,
         if ("Comments" in header):
-            leftSideStart = True
-            rightSideStart = False
+            left_side_start = True
+            right_side_start = False
         else:
-            leftSideStart = False
+            left_side_start = False
             # Case 3: started on the right side
-            rightSideStart = True
+            right_side_start = True
     # Case 1: finished on left side
-    leftSideFinished = True
+    left_side_finished = True
     # Case 2: finished on right side
-    if (rightDiv.findChildren()[0].name == "p"):
-        leftSideFinished = False
+    if (right_div.findChildren()[0].name == "p"):
+        left_side_finished = False
 
     # Case 1: finished on left side
-    if (leftSideStart and leftSideFinished):
-        writeToFile = JSONify(COMMENTS, paragraphs[len(paragraphs)-1].text)
-        file.write(writeToFile)
+    if (left_side_start and left_side_finished):
+        write_to_file = jsonify(_COMMENTS, paragraphs[len(paragraphs)-1].text)
+        file.write(write_to_file)
 
     # Case 2: finished on right side
-    if (leftSideStart and not leftSideFinished):
-        tempString = paragraphs[len(paragraphs)-1].text + \
-            ' ' + rightDiv.find('p').text
-        writeToFile = JSONify(COMMENTS, tempString)
-        file.write(writeToFile)
+    if (left_side_start and not left_side_finished):
+        temp_string = paragraphs[len(paragraphs)-1].text + \
+            ' ' + right_div.find('p').text
+        write_to_file = jsonify(_COMMENTS, temp_string)
+        file.write(write_to_file)
 
     # Case 3: comments right side
-    if (rightSideStart):
-        writeToFile = JSONify(COMMENTS, rightDiv.find('p').text)
-        file.write(writeToFile)
+    if (right_side_start):
+        write_to_file = jsonify(_COMMENTS, right_div.find('p').text)
+        file.write(write_to_file)
 
-    # Efficient Parser
-    muscleGroupNames = rightDiv.findAll('p')
-    muscleNames = rightDiv.findAll('ul')
-    writeToFile = ""
+
+def extract_muscles(current_muscles):
+    muscles = set()
+    for muscle in current_muscles:
+        # if the muscle has a link inside of it
+        muscle_link = muscle.find('a')
+        if muscle_link is not None:
+            if muscle_link.has_attr('href'):
+                muscles.add(muscle_link.get("href").rsplit('/', 1)[-1].lower())
+            else:
+                muscles.add(muscle.text)
+        # otherwise just extract the name as is
+        else:
+            muscles.add(muscle.text)
+    # create the string and return it
+    muscle_string = ""
+    for unique_muscle in muscles:
+        muscle_string += unique_muscle + ", "
+
+    return muscle_string[: -2]
+
+
+def write_muscle_groups(file, muscle_group_names, muscle_names):
+    write_to_file = ""
     first = True
-    for i in range(len(muscleGroupNames)-1, 0, -1):
-        muscleGroupName = muscleGroupNames[i].text.rstrip('\n').lower()
-        currentMuscles = muscleNames[i-1].findAll('li')
-        muscles = ""
-        for muscle in currentMuscles:
-            muscles += muscle.text + ", "
-        muscles = muscles[:-2]
+    # print(muscle_group_names)
+    # print(muscle_names)
+    for i in range(len(muscle_group_names)-1, -1, -1):
+        muscle_group_name = muscle_group_names[i].text.rstrip('\n').lower()
+        current_muscles = muscle_names[i].findAll('li')
+        muscles = extract_muscles(current_muscles)
         if first:
             first = False
-            writeToFile = JSONify(muscleGroupName, muscles)[:-2]
+            write_to_file = jsonify(muscle_group_name, muscles)[: -2]
         else:
-            writeToFile = JSONify(muscleGroupName, muscles) + writeToFile
+            write_to_file = jsonify(muscle_group_name, muscles) + write_to_file
+    # Writes the string to the file
+    file.write(write_to_file)
 
-    # Writes the string to the file and closes the file
-    file.write(writeToFile)
+
+def close_file(file):
     file.write('},')
     file.close()
+
+
+def parse_webpage(exercise_type, muscle_class, exercise_website_name, overall_muscle_group):
+
+    soup = get_soup(exercise_type, muscle_class, exercise_website_name)
+    left_div = soup.findAll('div', {"class": "col-sm-6"})[0]
+    right_div = soup.findAll('div', {"class": "col-sm-6"})[1]
+    classification_table = left_div.find('table')
+    paragraphs = left_div.findAll('p')
+    headers = left_div.findAll('h2')
+    muscle_group_names = right_div.findAll('p')
+    muscle_names = right_div.findAll('ul')
+
+    muscle_div = []
+    found = False
+    file = open_file(soup)
+    for child in right_div.children:
+        if found and child != '\n':
+            # print(child)
+            muscle_div.append(child)
+        if child.name == "h2":
+            if child.text.lower().strip() == "Muscles".lower().strip():
+                found = True
+    print(muscle_div)
+
+    # print(muscle_div.findAll('p'))
+    # print(muscle_div)
+    # print(right_div[found:len(right_div)-1])
+    # print(found)
+    # muscle_soup = BeautifulSoup(muscle_div)
+    # print(muscle_soup)
+    # save_media(soup)
+
+    if classification_table is not None and exercise_type == "WeightExercises":
+        write_classification(file, classification_table)
+
+    write_preparation_execution(file, paragraphs)
+
+    write_comments(file, headers, right_div, left_div, paragraphs)
+
+    write_muscle_groups(file, muscle_group_names, muscle_names)
+
+    close_file(file)
