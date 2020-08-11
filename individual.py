@@ -161,22 +161,18 @@ def extract_muscles(current_muscles):
     return muscle_string[: -2]
 
 
-def write_muscle_groups(file, muscle_group_names, muscle_names):
+def write_muscle_groups(file, muscle_section):
     write_to_file = ""
-    first = True
-    # print(muscle_group_names)
-    # print(muscle_names)
-    for i in range(len(muscle_group_names)-1, -1, -1):
-        muscle_group_name = muscle_group_names[i].text.rstrip('\n').lower()
-        current_muscles = muscle_names[i].findAll('li')
-        muscles = extract_muscles(current_muscles)
-        if first:
-            first = False
-            write_to_file = jsonify(muscle_group_name, muscles)[: -2]
-        else:
-            write_to_file = jsonify(muscle_group_name, muscles) + write_to_file
-    # Writes the string to the file
-    file.write(write_to_file)
+    category = ""
+    muscles = ""
+    while muscle_section.next_sibling != None:
+        muscle_section = muscle_section.next_sibling
+        if (muscle_section.name == "p"):
+            category = muscle_section.text.rstrip('\n').lower()
+        if (muscle_section.name == "ul"):
+            muscles = extract_muscles(muscle_section.findAll('li'))
+            write_to_file = jsonify(category, muscles) + write_to_file
+    file.write(write_to_file[: -2])
 
 
 def close_file(file):
@@ -192,27 +188,11 @@ def parse_webpage(exercise_type, muscle_class, exercise_website_name, overall_mu
     classification_table = left_div.find('table')
     paragraphs = left_div.findAll('p')
     headers = left_div.findAll('h2')
-    muscle_group_names = right_div.findAll('p')
+    muscle_section_start = right_div.find(name="h2", text="Muscles")
     muscle_names = right_div.findAll('ul')
 
-    muscle_div = []
-    found = False
     file = open_file(soup)
-    for child in right_div.children:
-        if found and child != '\n':
-            # print(child)
-            muscle_div.append(child)
-        if child.name == "h2":
-            if child.text.lower().strip() == "Muscles".lower().strip():
-                found = True
-    print(muscle_div)
 
-    # print(muscle_div.findAll('p'))
-    # print(muscle_div)
-    # print(right_div[found:len(right_div)-1])
-    # print(found)
-    # muscle_soup = BeautifulSoup(muscle_div)
-    # print(muscle_soup)
     # save_media(soup)
 
     if classification_table is not None and exercise_type == "WeightExercises":
@@ -222,6 +202,6 @@ def parse_webpage(exercise_type, muscle_class, exercise_website_name, overall_mu
 
     write_comments(file, headers, right_div, left_div, paragraphs)
 
-    write_muscle_groups(file, muscle_group_names, muscle_names)
+    write_muscle_groups(file, muscle_section_start)
 
     close_file(file)
