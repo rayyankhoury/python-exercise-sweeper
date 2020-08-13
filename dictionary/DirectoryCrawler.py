@@ -22,31 +22,38 @@ type_b = 'Stretches/'
 type_a_search = 'WeightExercises/(.*)/'
 type_b_search = 'Stretches/(.*)/'
 
-neck = "neck"
+neck = ["Neck", "Sternocleidomastoid", "Splenius"]
 neck_url = "https://www.exrx.net/Lists/ExList/NeckWt"
-shoulders = "shoulders"
+shoulders = ["Shoulders", "DeltoidAnterior",
+             "DeltoidLateral", "DeltoidPosterior", "Supraspinatus"]
 shoulders_url = "https://www.exrx.net/Lists/ExList/ShouldWt"
-upperarms = "upperarms"
+upperarms = ["UpperArms", "Triceps", "Biceps", "Brachialis"]
 upperarms_url = "https://www.exrx.net/Lists/ExList/ArmWt"
-forearms = "forearms"
+forearms = ["Forearms", "Brachioradialis", "WristFlexors",
+            "WristExtensors", "Pronators", "Supinators"]
 forearms_url = "https://www.exrx.net/Lists/ExList/ForeArmWt"
-back = "back"
+back = ["Back", "BackGeneral", "LatissimusDorsi", "TrapeziusUpper",
+        "Rhomboids", "Infraspinatus", "Subscapularis"]
 back_url = "https://www.exrx.net/Lists/ExList/BackWt"
-chest = "chest"
+chest = ["Chest", "PectoralSternal", "PectoralClavicular",
+         "PectoralisMinor", "SerratusAnterior"]
 chest_url = "https://www.exrx.net/Lists/ExList/ChestWt"
-waist = "waist"
+waist = ["Waist", "RectusAbdominis", "Obliques", "ErectorSpinae"]
 waist_url = "https://www.exrx.net/Lists/ExList/WaistWt"
-hips = "hips"
+hips = ["Hips", "GluteusMaximus", "HipAbductors",
+        "HipFlexors", "HipExternalRotators"]
 hips_url = "https://www.exrx.net/Lists/ExList/HipsWt"
-thighs = "thighs"
+thighs = ["Thighs", "Quadriceps", "Hamstrings", "HipAdductors"]
 thighs_url = "https://www.exrx.net/Lists/ExList/ThighWt"
-calves = "calves"
+calves = ["Calves", "Gastrocnemius", "Soleus", "TibialisAnterior"]
 calves_url = "https://www.exrx.net/Lists/ExList/CalfWt"
 
-names = [neck, shoulders, upperarms, forearms,
-         back, chest, waist, hips, thighs, calves]
+names = [neck[0], shoulders[0], upperarms[0], forearms[0],
+         back[0], chest[0], waist[0], hips[0], thighs[0], calves[0]]
 urls = [neck_url, shoulders_url, upperarms_url, forearms_url,
         back_url, chest_url, waist_url, hips_url, thighs_url, calves_url]
+muscle_groups = [neck, shoulders, upperarms, forearms,
+                 back, chest, waist, hips, thighs, calves]
 
 
 def array_dictionary_extend_if_no_exist(dictionary, key, value):
@@ -154,7 +161,7 @@ def iterate_column_uls(column_uls):
                     name = "stretch"
                     links = links[3:8]
                 First = False
-            #print([name, links])
+            # print([name, links])
             array_dictionary_extend_if_no_exist(temp, name, links)
     return [key, temp]
 
@@ -192,15 +199,27 @@ for name, url in zip(names, urls):
             # check if key exists
             # print(column_zip[1])
             array_dictionary_extend(packages, column_zip[0], column_zip[1])
+
+
+# Organizes the packages based on rules and persists
 packages.pop('')
 packages.pop('Power')
 hipeexternalrotator = packages.pop('HipExternalRotator')
 array_dictionary_extend(packages, 'HipExternalRotators', hipeexternalrotator)
 hipabductor = packages.pop('HipAbductor')
 array_dictionary_extend(packages, 'HipAbductors', hipabductor)
+
+organized = dict()
+for muscle_group in muscle_groups:
+    organized[muscle_group[0]] = dict()
+    for muscle in muscle_group[1:]:
+        array_dictionary_extend(
+            organized[muscle_group[0]], muscle, packages.pop(muscle))
+
+
 log = open('log.txt', 'w')
-pprint.pprint(packages, log)
+pprint.pprint(organized, log)
 
 with open('dictionary.pk1', 'wb') as output:
     sys.setrecursionlimit(10000)
-    pickle.dump(packages, output, -1)
+    pickle.dump(organized, output, -1)
