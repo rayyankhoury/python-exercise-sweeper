@@ -75,12 +75,12 @@ for name, url in zip(groupNames, groupURLS):
                 first = False
                 result = re.search(
     #     'https://player.vimeo.com/video/(.*)?muted=1&autoplay=1', soup.decode('utf-8'))
-                currentMuscle = link.text.lower().replace(" ", "")
-                currentSubdirectory = os.path.join(
+                currentMuscle=link.text.lower().replace(" ", "")
+                currentSubdirectory=os.path.join(
                     name, currentMuscle)
-                weightExercisesSubdirectory = os.path.join(
+                weightExercisesSubdirectory=os.path.join(
                     currentSubdirectory, "weightexercises")
-                stretchesSubdirectory = os.path.join(
+                stretchesSubdirectory=os.path.join(
                     currentSubdirectory, "stretches")
                 createSubdirectoryStructure(
                     currentSubdirectory, weightExercisesSubdirectory, stretchesSubdirectory)
@@ -102,13 +102,13 @@ for name, url in zip(groupNames, groupURLS):
 # file.write('{"exercise":[')
 # file.close()
 
-# individual.ParseWebpage("WeightExercises", "BackGeneral",
+# individual.parse_webpage("WeightExercises", "BackGeneral",
 #                         "BWSupineRow", exercise)
-# individual.ParseWebpage("WeightExercises", "BackGeneral", "BBBentOverRow")
-# individual.ParseWebpage(
+# individual.parse_webpage("WeightExercises", "BackGeneral", "BBBentOverRow")
+# individual.parse_webpage(
 #     "WeightExercises", "BackGeneral", "CamberedBarLyingRow")
-# individual.ParseWebpage("WeightExercises", "BackGeneral", "CBOneArmRow")
-# individual.ParseWebpage("WeightExercises", "BackGeneral",
+# individual.parse_webpage("WeightExercises", "BackGeneral", "CBOneArmRow")
+# individual.parse_webpage("WeightExercises", "BackGeneral",
 #                         "CBOneArmTwistingHighRow")
 # file = open('details.json', 'a')
 # file.write(']}')

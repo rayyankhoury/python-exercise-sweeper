@@ -15,6 +15,25 @@ import pprint
 import pickle
 
 
+value = input('''
+This is dangerous and will overwrite JSON details files.
+To overwrite type yes.
+To create directory structure without overwriting type dir.
+To exit type no\n''')
+
+overwrite = False
+
+if value == 'no':
+    sys.exit("Exiting")
+elif value == 'dir':
+    print("Creating directory structure")
+elif value == 'yes':
+    print('Overwriting')
+    overwrite = True
+else:
+    sys.exit("Wrong value entered, exiting")
+
+
 def createSubdirectory(name):
     subdirectory = name
     if not os.path.exists(name):
@@ -33,3 +52,6 @@ for key in organized.keys():
         createSubdirectory(os.path.join("data", key, muscle))
         for exercisetype in organized[key][muscle].keys():
             createSubdirectory(os.path.join("data", key, muscle, exercisetype))
+            if overwrite:
+                open(os.path.join("data", key, muscle,
+                                  exercisetype, "details.json"), "w+")
