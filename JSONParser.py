@@ -33,9 +33,9 @@ def write_to_file(group_key, muscle_key, type_key):
     file.write(']}')
 
 
-group_index_start = 1
-muscle_index_start = 1
-type_index_start = 3
+group_index_start = 4
+muscle_index_start = 5
+type_index_start = 0
 muscle_group_keys = organized.keys()
 for group_index, group_key in enumerate(muscle_group_keys):
     if group_index < group_index_start:
@@ -54,8 +54,8 @@ for group_index, group_key in enumerate(muscle_group_keys):
                 write_to_file(group_key, muscle_key, type_key)
             except Exception as e:
                 file = open("json_error.log", "a")
-                file.write(group_index + "," + muscle_index +
-                           "," + type_index + '\n')
+                file.write(str(group_index) + "," + str(muscle_index) +
+                           "," + str(type_index) + '\n')
                 file.close()
                 print(e)
 
