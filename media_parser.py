@@ -1,76 +1,68 @@
-import ExerciseDetailsParserJSON
 import os
 import sys
+import re
+import subprocess
 import pickle
-import pprint
-import os
-import sys
 import urllib
 import urllib.request
 import requests
-import re
 from bs4 import BeautifulSoup
-from bs4.element import ResultSet
-# from requests_html import HTMLSession
-import subprocess
-from collections import OrderedDict
-import pprint
-import time
+from json_constants import URL, URL_WWW, FAKE_IMAGE, HEADERS
 
-# JSON usage
-_ID = "id"
-_EXERCISE_TYPE = "exercisetype"
-_MUSCLE_CLASS = "muscleclass"
-_EXERCISE_ID = "exerciseid"
+_LOGO_GIF_TEXT = "ExRx.net: Exercise Prescription on Internet"
+_VIDEO_REGEX_STRING = "https://player.vimeo.com/video/(.*)?muted=1&autoplay=1"
 
-# Website Inputs
-_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:86.0) Gecko/20100101 Firefox/86.0"
-_URL = "https://exrx.net/"
-_EXERCISE_NAME_DIV = "fruitful-page-title fruitfull-title-padding"
-_COLUMN_DIV = "col-sm-6"
+# Can tweak these to start at different locations within the file directory
+GROUP_INDEX_START = 5
+MUSCLE_INDEX_START = 0
+TYPE_INDEX_START = 0
 
-
-with open(os.path.join('dictionary', 'dictionary.pk1'), 'rb') as input:
+with open(os.path.join('dictionary', 'dictionary.pk1'), 'rb') as file_input:
     sys.setrecursionlimit(10000)
-    organized = pickle.load(input)
+    organized = pickle.load(file_input)
 
 
 # URL Manipulations
 
 
 def get_soup(exercise_type, muscle_class, exercise_id):
-    '''
-    Retrieves the soup from the BeautifulSoup import
+    """Retrieves the soup from the BeautifulSoup import
 
-    exercise_type: WeightExercise or Stretches
+    Args:
+        exercise_type (string): WeightExercise, Stretches or Plyometrics (possible??)
+        muscle_class (string): The muscle class within the muscle group (e.g. Sternocleidomastoid)
+        exercise_id (string): The shorthand version of the website name used on the website itself
 
-    muscle_class: Muscle class within muscle group (e.g. Sternocleidomastoid)
-
-    exercise_id: shorthand version of website name used on website
-    '''
+    Returns:
+        BeautifulSoup: soup of the website page
+    """
 
     # URL Setup
-    referrer_url = _URL + exercise_type + "/" + muscle_class + "/" + exercise_id
+    referrer_url = URL + exercise_type + "/" + muscle_class + "/" + exercise_id
 
-    req = urllib.request.Request(
-        referrer_url,
-        headers={'User-Agent': _USER_AGENT})
+    req = urllib.request.Request(referrer_url, headers=HEADERS)
 
     try:
         page = urllib.request.urlopen(req)
-    except urllib.error.URLError as e:
-        print(e.reason)
+    except urllib.error.URLError as err:
+        print(err.reason)
 
     return BeautifulSoup(page, "lxml")
 
 
 def save_image(soup, path):
+    """Saves the image persistently to storage at the path location
+
+    Args:
+        soup (BeautifulSoup): The BeautifulSoup object of the page
+        path (os.path): Path object of the location to store the image
+    """
 
     image_blocks = soup.findAll(
         'img', {"class": "ccm-image-block"})
-    if image_blocks != None:
+    if image_blocks is not None:
         for image in image_blocks:
-            if "ExRx.net: Exercise Prescription on Internet" in image.get('alt'):
+            if _LOGO_GIF_TEXT in image.get('alt'):
                 continue
             image_link = image.get('src')
             print(image_link)
@@ -84,19 +76,19 @@ def save_image(soup, path):
                     image_link = image_link.replace("/application/files/",
                                                     "/application/files/thumbnails/small/")
                 image_link = image_link.replace(
-                    "https://exrx.net/", "https://www.exrx.net/")
+                    URL, URL_WWW)
                 if not "http" in image_link:
-                    image_link = "https://www.exrx.net" + image_link
+                    image_link = URL_WWW + image_link
                 path = path + '.' + extension
                 print(image_link)
-                with open(path, "wb") as f:
+                with open(path, "wb") as media_file:
                     response = requests.get(image_link)
-                    if (response.url == "https://www.solidbackgrounds.com/images/2560x1440/2560x1440-black-solid-color-background.jpg"):
+                    if response.url == FAKE_IMAGE:
                         image_link = image_link.replace("www.", "")
                         response = requests.get(image_link)
-                        if (response.url == "https://www.solidbackgrounds.com/images/2560x1440/2560x1440-black-solid-color-background.jpg"):
+                        if response.url == FAKE_IMAGE:
                             break
-                    f.write(response.content)
+                    media_file.write(response.content)
                 return
     # yes
     image_block = soup.find('picture')
@@ -114,13 +106,13 @@ def save_image(soup, path):
                     image_link = image_link.replace("/application/files/",
                                                     "/application/files/thumbnails/small/")
                 image_link = image_link.replace(
-                    "https://exrx.net/", "https://www.exrx.net/")
+                    URL, URL_WWW)
                 if not "http" in image_link:
-                    image_link = "https://www.exrx.net" + image_link
+                    image_link = URL_WWW + image_link
                 path = path + '.' + extension
                 print(image_link)
-                with open(path, "wb") as f:
-                    f.write(requests.get(image_link).content)
+                with open(path, "wb") as media_file:
+                    media_file.write(requests.get(image_link).content)
                 return
 
     file = open("error.log", "a")
@@ -129,9 +121,16 @@ def save_image(soup, path):
 
 
 def save_media(soup, path, referrer_url):
+    """Finds whether the media on the page is a video or an image and saves this media to storage using priority for a video
+
+    Args:
+        soup (BeautifulSoup): the beautiful soup of the page
+        path (os.path): The location to store the image or video
+        referrer_url (string): The actual URL of the website, used with the Vimeo extractor to spoof the website in to thiking that it is being requested from here
+    """
+
     # Finding video in soup
-    search_string = "https://player.vimeo.com/video/(.*)?muted=1&autoplay=1"
-    result = re.search(search_string, soup.decode('utf-8'))
+    result = re.search(_VIDEO_REGEX_STRING, soup.decode('utf-8'))
     # is not a video, saves an image instead
     if result is None:
         save_image(soup, path)
@@ -139,7 +138,7 @@ def save_media(soup, path, referrer_url):
     else:
         video_id = ''.join([n for n in result.group(1) if n.isdigit()])
         result = subprocess.run(["youtube-dl", "-v", "https://player.vimeo.com/video/" + video_id,
-                                 "--referer", referrer_url, "-o", path + '.%(ext)s'], capture_output=True, text=True)
+                                 "--referer", referrer_url, "-o", path + '.%(ext)s'], capture_output=True, text=True, check=True)
         if "ERROR:" in result.stderr:
             file = open("error.log", "a")
             file.write("Video not found at: " + path + '\n')
@@ -147,15 +146,24 @@ def save_media(soup, path, referrer_url):
 
 
 def parse_media(exercise_type, muscle_class, exercise_id, path):
+    """Takes in the information as dictated by the URL structure to generate the BeautifulSoup of the page
+    and also generates the exact location to store the media file
+
+    Args:
+        exercise_type (string): Weight, stretch, plyometrics
+        muscle_class (string): Actual muscle within the group
+        exercise_id (string): The ID used on the website to identify the particular exercise
+        path (os.path): the location on the storage where we store this file
+    """
     print(exercise_type, muscle_class, exercise_id, path)
     soup = get_soup(exercise_type, muscle_class, exercise_id)
     path = os.path.join(path, exercise_id.replace(" ", ""))
-    referrer_url = _URL + exercise_type + "/" + muscle_class + "/" + exercise_id
+    referrer_url = URL + exercise_type + "/" + muscle_class + "/" + exercise_id
     save_media(soup, path, referrer_url)
 
 
 def parse(href, path):
-    if not ("../../" in href or "https://www.exrx.net/" in href):
+    if not ("../../" in href or URL_WWW in href):
         raise ValueError("Unacceptable website input:" + href)
 
     cut = href.split("/")
@@ -163,10 +171,10 @@ def parse(href, path):
     return parse_media(cut[0], cut[1], cut[2], path)
 
 
-def write_to_file(group_key, muscle_key, type_key):
-    hrefs = organized[group_key][muscle_key][type_key]
+def write_to_file(group, muscle, mtype):
+    hrefs = organized[group][muscle][mtype]
     path = os.path.join(
-        'data', group_key, muscle_key, type_key)
+        'data', group, muscle, mtype)
     for href in hrefs:
         try:
             parse(href['href'], path)
@@ -176,30 +184,18 @@ def write_to_file(group_key, muscle_key, type_key):
 
 muscle_group_keys = organized.keys()
 
-group_index_start = 0
-muscle_index_start = 0
-type_index_start = 0
-
-# 5 0 13 failuire
-
-# 5 3 7 failure
-
-# 6 0 9 failure
-
-# 6 1 8 failure
-
 for group_index, group_key in enumerate(muscle_group_keys):
-    if group_index < group_index_start:
+    if group_index < GROUP_INDEX_START:
         continue
     # group_key = list(organized.keys())[0]
     muscle_keys = organized[group_key].keys()
     for muscle_index, muscle_key in enumerate(muscle_keys):
         print(muscle_key)
-        if muscle_index < muscle_index_start and group_index_start == group_index:
+        if muscle_index < MUSCLE_INDEX_START and GROUP_INDEX_START == group_index:
             continue
         type_keys = organized[group_key][muscle_key].keys()
         for type_index, type_key in enumerate(type_keys):
-            if type_index < type_index_start and muscle_index == muscle_index_start and group_index_start == group_index:
+            if type_index < TYPE_INDEX_START and muscle_index == MUSCLE_INDEX_START and GROUP_INDEX_START == group_index:
                 continue
             if "stretch".lower() not in type_key.lower():
                 continue
