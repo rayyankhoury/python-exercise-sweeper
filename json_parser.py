@@ -27,14 +27,13 @@ def write_to_file(group, muscle, mtype):
 
     with open(path, "w+") as file:
         file.write(f'{{"{mtype}":[')
-        details = []
-        for index, href in enumerate(hrefs):
-            try:
-                details.append(
-                    ExerciseDetailsParserJSON.parse(href['href'], index))
-            except ValueError as err:
-                print(err.args)
-        file.write(f'{",".join(details)}]}}')
+        try:
+            details = ','.join([ExerciseDetailsParserJSON.parse(
+                href['href'], index) for index, href in enumerate(hrefs)])
+        except ValueError as err:
+            print(err.args)
+            details = ''
+        file.write(f'{details}]}}')
 
 
 def write_json(dictionary):
