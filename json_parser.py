@@ -38,21 +38,32 @@ def write_to_file(group, muscle, mtype):
 
 
 def write_json(dictionary):
+    """Writes JSON to a file location based on the dictionary
+
+    Args:
+        dictionary (dictionary): a dictionary containing all the relevant website information
+    """
     for group_key, group_dict in dictionary.items():
         for muscle_key, muscle_dict in group_dict.items():
-            for type_key, type_dict in muscle_dict.items():
+            for type_key in muscle_dict.items():
                 keystring = f"{group_key}, {muscle_key}, {type_key}"
                 print(f"Writing JSON: {keystring}")
                 try:
                     write_to_file(group_key, muscle_key, type_key)
-                except Exception as err:
+                except ValueError as err:
                     with open("json_error.log", "a") as file:
                         file.write(f"{keystring}\n")
                     print(err)
 
 
-def get_individual_items(array):
-    for child in check:
+def get_individual_items(errors):
+    """ An error testing function that runs on failed items
+
+    Args:
+        array (list(list())): a list of lists containing the
+        group, muscle and type key of failed items
+    """
+    for child in errors:
         dict2 = {child[2]: organized[child[0]][child[1]][child[2]]}
         dict1 = {child[1]: dict2}
         dict0 = {child[0]: dict1}
